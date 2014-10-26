@@ -1,6 +1,6 @@
 name: PortalUnstuck
 main: com.github.minetonight.portalunstuck.PortalUnstuck
-version: 0.1
+version: 0.8
 commands:
   unstuck:
     description: Will check player for stuck in portal and will move him a bit
