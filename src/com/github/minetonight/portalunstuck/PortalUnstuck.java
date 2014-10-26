@@ -70,17 +70,18 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 		final Location location = player.getLocation();
 
 		Vector directions[] = {
-				new Vector(-1, 0, 0),
-				new Vector(0, 0, -1),
+				new Vector(1, 0, 0),
+				new Vector(0, 0, 1),
 		};
 		
 		
 		for (Vector direction : directions) {
 			System.out.println("direction=" + direction);
+			System.out.println("location=" + location);
 			Location newLocation = location.add(direction);
-			getLogger().info("At "+newLocation.toString()+ " there is "+ newLocation.getBlock().getType());
-			newLocation = location.subtract(direction);
-			getLogger().info("At "+newLocation.toString()+ " there is "+ newLocation.getBlock().getType());
+			getLogger().info("At " + newLocation + " there is "+ newLocation.getBlock().getType());
+			newLocation = location.subtract(direction.multiply(-1));
+			getLogger().info("At " + newLocation + " there is "+ newLocation.getBlock().getType());
 		}
 		
 		
