@@ -8,9 +8,12 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.player.PlayerPortalEvent;
+import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -39,6 +42,7 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 			}
 			
 			performUnstuck(PortalUnstuck.this, target, sender);
+			isInPortal(PortalUnstuck.this, target, sender);
 			getLogger().info(sender.getName() + " performed command " + cmd.getName());
 			
 			return true;
@@ -56,15 +60,55 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 
 		final Player player = event.getPlayer();
 		performUnstuck(plugin, player, null);
+		isInPortal(plugin, player, null);
 	}
 
 	@EventHandler
 	public void onPlayerJoin(PlayerJoinEvent event) {
-//		getLogger().info(event.getPlayer().getName() + " joined the server! :D");
-//		JavaPlugin plugin = PortalUnstuck.this;
-//		
-//		final Player player = event.getPlayer();
-//		performUnstuck(plugin, player, null);
+	}
+	
+	/**
+	 * Intends to prevent portal stuck on teleport level.
+	 * TODO still not updating the event#to Location
+	 * @param event
+	 */
+	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerPortal(PlayerPortalEvent event) {
+		
+		TeleportCause cause = event.getCause();
+		Player player = event.getPlayer();
+		Location from = event.getFrom();
+		Location to = event.getTo();
+
+		if (isDebugging) {
+			
+			System.out.println("player=" + player);
+			System.out.println("from=" + from);
+			System.out.println("to=" + to);
+			System.out.println("cause=" + cause);
+		}
+		
+//		if (cause == TeleportCause.NETHER_PORTAL) {
+//			event.setTo(event.getTo().add(0.5, 0, 0.5));
+//		}
+	}//eof onPlayerTeleport
+	
+	
+	private void isInPortal(JavaPlugin plugin, final Player player, final CommandSender sender) {
+		
+		Location location = player.getLocation();
+		
+		double dx = location.getX() - Math.floor(location.getX());
+		double dz = location.getZ() - Math.floor(location.getZ());
+		System.out.println("dx=" + dx);
+		System.out.println("dz=" + dz);
+		
+		if (dx < 0.01 && dz < 0.01) { // overworld
+			getLogger().info("It looks like you are out of portal.");
+		}
+		if (dx > 0.49 && dx < 0.51 && dz < 0.01) { // nether
+			getLogger().info("It looks like you are out of portal.");
+		}
 	}
 	
 	
@@ -86,7 +130,6 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 				getLogger().info("At " + relative.getLocation() + " there is "+ relative.getType());
 			}
 		}
-		
 		
 		Material type = location.getBlock().getType();
 		getLogger().info("Right now " + player.getName() + " is in "+type.toString());
