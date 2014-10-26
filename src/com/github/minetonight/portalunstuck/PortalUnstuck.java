@@ -11,7 +11,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.plugin.PluginManager;
@@ -19,7 +18,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class PortalUnstuck extends JavaPlugin implements Listener {
 
-	private static final boolean isDebugging = true;
+	private static final boolean isDebugging = false;
 
 	@Override
 	public void onEnable() {
@@ -31,17 +30,18 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 
 		if(cmd.getName().equalsIgnoreCase("unstuck")){ // If the player typed /unstuck then do the following...
 			if (args.length < 1) {
-				sender.sendMessage("Which player to unstuck???");
+				sender.sendMessage("[PortalUnstuck] Which player to unstuck???");
 				return false;
 			}
 
 			Player target = (Bukkit.getServer().getPlayer(args[0]));
 			if (target == null) {
-				sender.sendMessage(args[0] + " is not online!");
+				sender.sendMessage("[PortalUnstuck] " + args[0] + " is not online!");
 				return false;
 			}
 			
 			checkStuck(PortalUnstuck.this, target, sender);
+			sender.sendMessage("[PortalUnstuck] Trying to save him, thanks");
 			getLogger().info(sender.getName() + " performed command " + cmd.getName());
 			
 			return true;
@@ -53,22 +53,13 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 
 	
 	@EventHandler
-	public void onPlayerLogin(PlayerLoginEvent event) {
-		if (isDebugging) {
-			getLogger().info(event.getPlayer().getName() + " logged in the server!");
-		}
-		//too early called?
-	}
-
-	@EventHandler
 	public void onPlayerJoin(PlayerJoinEvent event) {
 		if (isDebugging) {
 			getLogger().info(event.getPlayer().getName() + " joined the server!");
 		}
-		JavaPlugin plugin = PortalUnstuck.this;
 		
 		final Player player = event.getPlayer();
-		checkStuck(plugin, player, null);
+		checkStuck(PortalUnstuck.this, player, null);
 	}
 	
 	
@@ -106,8 +97,6 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 			
 			performUnstuck(plugin, player, sender);
 		}
-
-		return;
 	}//eof checkStuck
 	
 	
@@ -117,8 +106,11 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 		
 		double dx = location.getX() - Math.floor(location.getX());
 		double dz = location.getZ() - Math.floor(location.getZ());
-		System.out.println("dx=" + dx);
-		System.out.println("dz=" + dz);
+
+		if (isDebugging) {
+			System.out.println("dx=" + dx);
+			System.out.println("dz=" + dz);
+		}
 		
 		boolean flag = false;
 		if (dx < 0.01 && dz < 0.01) { // overworld
@@ -134,8 +126,10 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 			flag = true;
 		}
 		
-		if (flag) {
-			getLogger().info("It looks like you are just teleported.");
+		if (isDebugging) {
+			if (flag) {
+				getLogger().info("It looks like you are just teleported.");
+			}
 		}
 		return flag;
 	}//eof isAtRoundCoordinates
@@ -182,8 +176,10 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 			}
 		}
 		
-		if (flag) {
-			getLogger().info("It looks like you are next to portal.");
+		if(isDebugging){
+			if (flag) {
+				getLogger().info("It looks like you are next to portal.");
+			}
 		}
 		return flag;
 	}//eof isNextToPortal
@@ -213,39 +209,49 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 			@Override
 			public void run() {
 
+				boolean success = false;
+				Block relative = null;
+				
 				check: for (int[] dir : directionsAroundPortal) {
-					System.out.println("dir=" + dir);
-					Block relative = location.getBlock().getRelative(dir[0], dir[1], dir[2]);
+					relative = location.getBlock().getRelative(dir[0], dir[1], dir[2]);
 
 					Block blockFloor = relative.getRelative(0, -1, 0);
 					if (blockFloor.isEmpty() || blockFloor.isLiquid()) {
-						System.out.println("Is that last iteration????");
 						continue; // no floor, keep searching
 					} else {
 						Block blockAbove = relative.getRelative(0, 1, 0);
 						if (blockAbove.isEmpty() && 
 								! isNextToPortal(relative.getLocation())) {
 							
-							System.out.println("We found safe spot");
-							player.teleport(relative.getLocation().add(0.5, 0, 0.5));
+							Location safeSpot = relative.getLocation().add(0.5, 0, 0.5);
+							safeSpot.setPitch(player.getLocation().getPitch());
+							safeSpot.setYaw(player.getLocation().getYaw());
+							
+							player.teleport(safeSpot);
 
-							String resquer = "PortalUnstuck";
-							if (sender != null) {
-								resquer = sender.getName();
-							}
-
-							player.sendMessage(resquer  + " detected you were stuck in portal and moved you a bit!");
-							if (sender != null) {
-								sender.sendMessage("Thanks, you saved "+player.getName());
-							}
-							getLogger().info("Unstucking player " + player.getName() + " to " + relative.getLocation());
+							success = true;
 							break check;
-						}
-						else {
-							System.out.println("Bad option at +" + relative.getLocation());
 						}
 					}
 				}//foreach direction
+				
+				if (success) {
+					String resquer = "PortalUnstuck";
+					if (sender != null) {
+						resquer = sender.getName();
+					}
+					
+					player.sendMessage("[PortalUnstuck] " + resquer  + " detected you were stuck in portal and moved you a bit!");
+					if (sender != null) {
+						sender.sendMessage("[PortalUnstuck] Thanks, you saved "+player.getName());
+					}
+					getLogger().info("Unstucking player " + player.getName() + " to " + relative.getLocation());
+				} else {
+					if (sender != null) {
+						sender.sendMessage("[PortalUnstuck] There is no safe spot around to move "+player.getName());
+					}
+				}
+				
 			}
 		}, 20L);
 	}//eof performUnstuck
