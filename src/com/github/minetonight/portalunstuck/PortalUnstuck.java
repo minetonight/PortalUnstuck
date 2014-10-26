@@ -249,6 +249,7 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 				} else {
 					if (sender != null) {
 						sender.sendMessage("[PortalUnstuck] There is no safe spot around to move "+player.getName());
+						player.sendMessage("[PortalUnstuck] It looks like you are in portal. If you are stuck, ask a friend to issue command /unstuck " +player.getName());
 					}
 				}
 				
