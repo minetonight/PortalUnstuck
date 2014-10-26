@@ -1,0 +1,13 @@
+name: PortalUnstuck
+main: com.github.minetonight.portalunstuck.PortalUnstuck
+version: 0.1
+commands:
+  unstuck:
+    description: Will check player for stuck in portal and will move him a bit
+    usage: /unstuck [player]
+    permission: portalunstuck.unstuck
+    permission-message: You don't have permission portalunstuck.unstuck 
+permissions:
+  portalunstuck.unstuck:
+    description: Allows you to move a stuck player
+    default: true
