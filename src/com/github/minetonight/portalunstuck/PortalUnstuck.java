@@ -41,8 +41,7 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 				return false;
 			}
 			
-			performUnstuck(PortalUnstuck.this, target, sender);
-			isInPortal(PortalUnstuck.this, target, sender);
+			checkStuck(PortalUnstuck.this, target, sender);
 			getLogger().info(sender.getName() + " performed command " + cmd.getName());
 			
 			return true;
@@ -55,17 +54,23 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 	
 	@EventHandler
 	public void onPlayerLogin(PlayerLoginEvent event) {
-		getLogger().info(event.getPlayer().getName() + " logged in the server! :D");
-		JavaPlugin plugin = PortalUnstuck.this;
-
-		final Player player = event.getPlayer();
-		performUnstuck(plugin, player, null);
-		isInPortal(plugin, player, null);
+		if (isDebugging) {
+			getLogger().info(event.getPlayer().getName() + " logged in the server!");
+		}
+		//too early called?
 	}
 
 	@EventHandler
 	public void onPlayerJoin(PlayerJoinEvent event) {
+		if (isDebugging) {
+			getLogger().info(event.getPlayer().getName() + " joined the server!");
+		}
+		JavaPlugin plugin = PortalUnstuck.this;
+		
+		final Player player = event.getPlayer();
+		checkStuck(plugin, player, null);
 	}
+	
 	
 	/**
 	 * Intends to prevent portal stuck on teleport level.
@@ -94,7 +99,19 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 	}//eof onPlayerTeleport
 	
 	
-	private void isInPortal(JavaPlugin plugin, final Player player, final CommandSender sender) {
+	private void checkStuck(JavaPlugin plugin, final Player player, final CommandSender sender) {
+		
+		if (isNextToPortal(player.getLocation())
+				&& isAtRoundCoordinates(plugin, player, sender)) {
+			
+			performUnstuck(plugin, player, sender);
+		}
+
+		return;
+	}//eof checkStuck
+	
+	
+	private boolean isAtRoundCoordinates(JavaPlugin plugin, final Player player, final CommandSender sender) {
 		
 		Location location = player.getLocation();
 		
@@ -103,69 +120,134 @@ public class PortalUnstuck extends JavaPlugin implements Listener {
 		System.out.println("dx=" + dx);
 		System.out.println("dz=" + dz);
 		
+		boolean flag = false;
 		if (dx < 0.01 && dz < 0.01) { // overworld
-			getLogger().info("It looks like you are out of portal.");
+			flag = true;
 		}
-		if (dx > 0.49 && dx < 0.51 && dz < 0.01) { // nether
-			getLogger().info("It looks like you are out of portal.");
+		else if (dx > 0.49 && dx < 0.51 && dz < 0.01) { // nether
+			flag = true;
 		}
-	}
-	
-	
-	private void performUnstuck(JavaPlugin plugin, final Player player, final CommandSender sender) {
+		else if (dx < 0.01 && dz > 0.49 && dz < 0.51) {
+			flag = true;
+		}
+		else if (dx > 0.49 && dx < 0.51 && dz > 0.49 && dz < 0.51) {
+			flag = true;
+		}
+		
+		if (flag) {
+			getLogger().info("It looks like you are just teleported.");
+		}
+		return flag;
+	}//eof isAtRoundCoordinates
 
-		final int directions[][] = {
-				{1, 0, 0},
-				{-1, 0, 0},
-				{0, 0, 1},
-				{0, 0, -1},
-		};
+	
+	final int directionsFour[][] = {
+			{1, 0, 0},
+			{-1, 0, 0},
+			{0, 0, 1},
+			{0, 0, -1},
+	};
+	
+	
+	private boolean isNextToPortal(Location location) {
 		
-		final Location location = player.getLocation();
+		Block block = location.getBlock();
+		Material type;
+
+		boolean flag = false;
 		
+		//check block at location
+		type = block.getType();
 		if(isDebugging){
-			for (int[] dir : directions) {
-				System.out.println("location=" + location);
-				Block relative = location.getBlock().getRelative(dir[0], dir[1], dir[2]);
-				getLogger().info("At " + relative.getLocation() + " there is "+ relative.getType());
+			getLogger().info("The location is in "+type.toString());
+		}
+		if (type == Material.PORTAL) {
+			flag = true;
+		}
+
+		if ( ! flag) {
+			//check blocks around
+			for (int[] dir : directionsFour) {
+				Block relative = block.getRelative(dir[0], dir[1], dir[2]);
+				
+				if(isDebugging){
+					System.out.println("location=" + location);
+					getLogger().info("At " + relative.getLocation() + " there is "+ relative.getType());
+				}
+				
+				type = relative.getType();
+				if (type == Material.PORTAL) {
+					flag = true;
+				}
 			}
 		}
 		
-		Material type = location.getBlock().getType();
-		getLogger().info("Right now " + player.getName() + " is in "+type.toString());
-		if (type == Material.PORTAL) {
-			plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
-				@Override
-				public void run() {
-					
-					check: for (int[] dir : directions) {
-						Block relative = location.getBlock().getRelative(dir[0], dir[1], dir[2]);
-						
-						Block blockFloor = relative.getRelative(0, -1, 0);
-						if (blockFloor.isEmpty()) {
-							continue;
-						} else {
-							Block blockAbove = relative.getRelative(0, 2, 0);
-							if (blockAbove.isEmpty() ) {
-								player.teleport(relative.getLocation());
-								
-								String resquer = "PortalUnstuck";
-								if (sender != null) {
-									resquer = sender.getName();
-								}
-								
-								player.sendMessage(resquer  + " detected you were stuck in portal and moved you a bit!");
-								if (sender != null) {
-									sender.sendMessage("Thanks, you saved "+player.getName());
-								}
-								getLogger().info("Unstucking player " + player.getName() + " to " + relative.getLocation());
-								break check;
-							}
-						}
-					}//foreach direction
-				}
-			}, 20L);
+		if (flag) {
+			getLogger().info("It looks like you are next to portal.");
 		}
+		return flag;
+	}//eof isNextToPortal
+	
+	
+	final int directionsAroundPortal[][] = {
+			{-2, 0, 0},
+			{-1, 0, 0},
+			{1, 0, 0},
+			{2, 0, 0},
+			{0, 0, -2},
+			{0, 0, -1},
+			{0, 0, 1},
+			{0, 0, 2},
+			
+			{1, 0, -1},
+			{1, 0, 1},
+			{-1, 0, 1},
+			{-1, 0, -1},
+			
+	};
+	private void performUnstuck(JavaPlugin plugin, final Player player, final CommandSender sender) {
+
+		final Location location = player.getLocation();
+		
+		plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+			@Override
+			public void run() {
+
+				check: for (int[] dir : directionsAroundPortal) {
+					System.out.println("dir=" + dir);
+					Block relative = location.getBlock().getRelative(dir[0], dir[1], dir[2]);
+
+					Block blockFloor = relative.getRelative(0, -1, 0);
+					if (blockFloor.isEmpty() || blockFloor.isLiquid()) {
+						System.out.println("Is that last iteration????");
+						continue; // no floor, keep searching
+					} else {
+						Block blockAbove = relative.getRelative(0, 1, 0);
+						if (blockAbove.isEmpty() && 
+								! isNextToPortal(relative.getLocation())) {
+							
+							System.out.println("We found safe spot");
+							player.teleport(relative.getLocation().add(0.5, 0, 0.5));
+
+							String resquer = "PortalUnstuck";
+							if (sender != null) {
+								resquer = sender.getName();
+							}
+
+							player.sendMessage(resquer  + " detected you were stuck in portal and moved you a bit!");
+							if (sender != null) {
+								sender.sendMessage("Thanks, you saved "+player.getName());
+							}
+							getLogger().info("Unstucking player " + player.getName() + " to " + relative.getLocation());
+							break check;
+						}
+						else {
+							System.out.println("Bad option at +" + relative.getLocation());
+						}
+					}
+				}//foreach direction
+			}
+		}, 20L);
 	}//eof performUnstuck
 
 
