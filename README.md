@@ -1,8 +1,8 @@
 PortalUnstuck
 =============
 
-Bukkit plugin to save people stuck in portals on login, that can't type and move.
-With second tier authentication like LoginSecurty, there is often problem with people stuck in portals. 
+Bukkit plugin http://dev.bukkit.org/bukkit-plugins/portalunstuck/pages/main/ to save people stuck in portals on login, that can't type and move.
+With second tier authentication like LoginSecurty, there is often problem with people trapped in portals. 
 That plugin solves that problem.
 
 Commands:
